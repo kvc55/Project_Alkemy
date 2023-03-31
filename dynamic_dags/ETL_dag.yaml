@@ -1,0 +1,47 @@
+ETL_dag:
+
+  default_args:
+    owner: "cine_ba_univ"
+    start_date: 2022-07-23
+    end_date: 2022-12-25
+    retries: 1
+    retry_delay_sec: 120
+  schedule_interval: "0 * * * *"
+  default_view: "tree"
+  orientation: "LR"
+  description: "Configuration for the ETL dag for Universidad del Cine and Universidad de Buenos Aires"
+
+  tasks:
+
+    data_extraction_task:
+      operator: airflow.operators.python.PythonOperator
+      python_callable_name: data_extraction
+      python_callable_file: /home/karencaro/airflow/dags/scripts/data_extraction.py
+      op_args:
+        - /home/karencaro/airflow/dags/sql/cine_univ.sql
+        - /home/karencaro/airflow/dags/sql/ba_univ.sql
+
+    data_processing_task:
+      operator: airflow.operators.python.PythonOperator
+      python_callable_name: data_processing
+      python_callable_file: /home/karencaro/airflow/dags/scripts/data_processing.py
+      op_args:
+        - /home/karencaro/airflow/files/cine_univ.csv
+        - /home/karencaro/airflow/files/ba_univ.csv
+        - https://drive.google.com/u/0/uc?id=1or8pr7-XRVf5dIbRblSKlRmcP0wiP9QJ&export=download
+
+    cine_data_loading_task:
+      operator: airflow.operators.python.PythonOperator
+      python_callable_name: upload_file_to_s3
+      python_callable_file: /home/karencaro/airflow/dags/scripts/data_loading.py
+      op_kwargs:
+        file_name: /home/karencaro/airflow/files/cine_univ.txt
+      dependencies: [data_processing_task]
+
+    ba_data_loading_task:
+      operator: airflow.operators.python.PythonOperator
+      python_callable_name: upload_file_to_s3
+      python_callable_file: /home/karencaro/airflow/dags/scripts/data_loading.py
+      op_kwargs:
+        file_name: /home/karencaro/airflow/files/ba_univ.txt
+      dependencies: [data_processing_task]
